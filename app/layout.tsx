@@ -6,7 +6,7 @@ import { getSiteUrl, SITE_DESCRIPTION } from "@/lib/site";
 import "./globals.css";
 
 const siteUrl = getSiteUrl();
-const title = "Wingman — Reply better, overthink less";
+const title = "Wingman by fakehecker";
 const description = SITE_DESCRIPTION;
 
 export const metadata: Metadata = {

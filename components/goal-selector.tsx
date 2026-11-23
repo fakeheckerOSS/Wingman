@@ -13,12 +13,11 @@ export function GoalSelector({ selected, onChange }: GoalSelectorProps) {
     <fieldset>
       <legend className="mb-2.5 flex w-full items-baseline justify-between">
         <span className="text-[13px] font-medium text-foreground">Goal</span>
-        <span className="text-[11px] text-muted-foreground">what&apos;s the move?</span>
+        <span className="text-[11px] text-foreground/70">what&apos;s the move?</span>
       </legend>
       <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Goal">
-        {GOALS.map((goal, index) => {
+        {GOALS.map((goal) => {
           const active = goal === selected;
-          const spansFull = GOALS.length % 2 === 1 && index === GOALS.length - 1;
           return (
             <button
               key={goal}
@@ -28,7 +27,6 @@ export function GoalSelector({ selected, onChange }: GoalSelectorProps) {
               onClick={() => onChange(goal)}
               className={cn(
                 "inline-flex items-center justify-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                spansFull && "col-span-2",
                 active
                   ? "border-primary bg-primary/15 text-foreground shadow-sm shadow-primary/10"
                   : "border-border bg-card/60 text-muted-foreground hover:border-primary/30 hover:bg-accent/60 hover:text-foreground",

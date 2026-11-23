@@ -21,6 +21,8 @@ export interface GenerateRequest {
   exclude?: string[];
   /** Regenerate a single card in one tone. */
   single?: boolean;
+  /** Ask for a shorter version of a single reply. */
+  shorter?: boolean;
 }
 
 /** Client-only preview record; never sent to the API as-is. */

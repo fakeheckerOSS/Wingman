@@ -13,7 +13,7 @@ interface ModeOption {
 
 const MODE_OPTIONS: ModeOption[] = [
   { value: "replies", label: "Replies", icon: MessagesSquare },
-  { value: "lines", label: "Pickup lines", icon: Sparkles },
+  { value: "lines", label: "Pickup", icon: Sparkles },
 ];
 
 interface ModeSwitchProps {

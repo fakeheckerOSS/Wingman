@@ -15,7 +15,7 @@ export function ToneSelector({ selected, onToggle }: ToneSelectorProps) {
     <fieldset>
       <legend className="mb-2.5 flex w-full items-baseline justify-between">
         <span className="text-[13px] font-medium text-foreground">Tone</span>
-        <span className="text-[11px] text-muted-foreground">pick a few</span>
+        <span className="text-[11px] text-foreground/70">pick a few</span>
       </legend>
       <div className="grid grid-cols-3 gap-2">
         {TONES.map((tone) => {

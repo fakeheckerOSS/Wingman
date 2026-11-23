@@ -34,6 +34,7 @@ interface ReplyPanelProps {
   busyId: string | null;
   generatingMore: boolean;
   onRegenerate: (reply: Reply) => void;
+  onShorten: (reply: Reply) => void;
   onGenerateMore: () => void;
   onRetry: () => void;
 }
@@ -57,16 +58,16 @@ const REPLY_SAMPLES: Sample[] = [
 
 const LINE_SAMPLES: Sample[] = [
   {
-    tone: "Smooth",
-    text: "I was going to play it cool, but you make that impossible.",
+    tone: "Playful",
+    text: "I was going to open with a hiking pun, but I didn't want to peak too soon.",
   },
   {
-    tone: "Funny",
-    text: "I'd open with something clever, but you've clearly already raised the bar.",
+    tone: "Smooth",
+    text: "You had me at iced coffee — now I just need to know if you're a sunrise-hike person or a brunch person.",
   },
   {
     tone: "Sweet",
-    text: "If you were a coffee, you'd be the reason I wake up early.",
+    text: "Someone who likes bad puns and iced coffee? I think we're going to get along dangerously well.",
   },
 ];
 
@@ -75,15 +76,20 @@ function SampleCard({ sample, index }: { sample: Sample; index: number }) {
     <div
       aria-hidden
       style={{ animationDelay: `${index * 70}ms` }}
-      className="animate-fade-up select-none rounded-2xl border border-border/70 bg-card/70 p-3.5 opacity-70 shadow-sm"
+      className="animate-fade-up select-none rounded-2xl border border-border/60 bg-card/70 p-3.5 opacity-70 shadow-sm"
     >
-      <span className="inline-flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-        <span
-          className="h-1.5 w-1.5 rounded-full"
-          style={{ backgroundColor: TONE_COLORS[sample.tone] }}
-        />
-        {sample.tone}
-      </span>
+      <div className="flex items-center justify-between gap-2">
+        <span className="inline-flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+          <span
+            className="h-1.5 w-1.5 rounded-full"
+            style={{ backgroundColor: TONE_COLORS[sample.tone] }}
+          />
+          {sample.tone}
+        </span>
+        <span className="text-[9px] font-semibold uppercase tracking-[0.14em] text-foreground/60">
+          Sample
+        </span>
+      </div>
       <p className="mt-1.5 text-[13.5px] leading-relaxed text-foreground/75">{sample.text}</p>
     </div>
   );
@@ -94,7 +100,7 @@ function EmptyState({ mode }: { mode: Mode }) {
   const samples = isLines ? LINE_SAMPLES : REPLY_SAMPLES;
 
   return (
-    <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-border/90 bg-card/35 px-6 py-10 text-center">
+    <div className="flex flex-col items-center justify-center px-6 py-10 text-center">
       <div className="relative mb-4">
         <div className="absolute inset-0 rounded-full bg-primary/15 blur-2xl" />
         <div className="relative grid h-14 w-14 place-items-center rounded-2xl border border-primary/20 bg-card text-primary shadow-warm">
@@ -111,12 +117,12 @@ function EmptyState({ mode }: { mode: Mode }) {
       </h3>
       <p className="mt-1.5 max-w-[330px] text-balance text-sm leading-relaxed text-muted-foreground">
         {isLines
-          ? "Tell me who you're into and the vibe you want. Here's a taste of what you'll get:"
-          : "Add a screenshot and a little context. Here's a taste of what you'll get:"}
+          ? "Tell me who you're into and the vibe you want."
+          : "Add a screenshot and a little context."}
       </p>
 
       <div className="mt-5 w-full space-y-2.5 text-left">
-        <p className="px-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/80">
+        <p className="px-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-foreground/60">
           Examples
         </p>
         {samples.map((sample, index) => (
@@ -167,6 +173,7 @@ export function ReplyPanel({
   busyId,
   generatingMore,
   onRegenerate,
+  onShorten,
   onGenerateMore,
   onRetry,
 }: ReplyPanelProps) {
@@ -186,7 +193,7 @@ export function ReplyPanel({
           </h2>
         </div>
         {phase === "ready" && replies.length > 0 && (
-          <Badge variant="muted" className="mb-0.5 shrink-0">
+          <Badge variant="muted" className="mb-0.5 shrink-0 bg-primary/10 text-foreground/70">
             {replies.length} {replies.length === 1 ? (isLines ? "line" : "draft") : isLines ? "lines" : "drafts"}
           </Badge>
         )}
@@ -250,6 +257,7 @@ export function ReplyPanel({
                 busy={busyId === reply.id}
                 disabled={busyId !== null || generatingMore}
                 onRegenerate={onRegenerate}
+                onShorten={onShorten}
               />
             ))}
           </div>

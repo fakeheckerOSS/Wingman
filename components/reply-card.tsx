@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, Copy, Loader2, RefreshCw } from "lucide-react";
+import { Check, Copy, Loader2, Minimize2, RefreshCw } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ interface ReplyCardProps {
   busy: boolean;
   disabled: boolean;
   onRegenerate: (reply: Reply) => void;
+  onShorten: (reply: Reply) => void;
 }
 
 async function copyToClipboard(text: string): Promise<boolean> {
@@ -41,7 +42,14 @@ async function copyToClipboard(text: string): Promise<boolean> {
   }
 }
 
-export function ReplyCard({ reply, index, busy, disabled, onRegenerate }: ReplyCardProps) {
+export function ReplyCard({
+  reply,
+  index,
+  busy,
+  disabled,
+  onRegenerate,
+  onShorten,
+}: ReplyCardProps) {
   const [copied, setCopied] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -57,7 +65,7 @@ export function ReplyCard({ reply, index, busy, disabled, onRegenerate }: ReplyC
 
     setCopied(true);
     if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => setCopied(false), 1800);
+    timer.current = setTimeout(() => setCopied(false), 1500);
   }
 
   const dotColor = TONE_COLORS[reply.tone as Tone] ?? "#D97757";
@@ -82,11 +90,12 @@ export function ReplyCard({ reply, index, busy, disabled, onRegenerate }: ReplyC
             variant="ghost"
             size="sm"
             onClick={handleCopy}
+            title={copied ? "Copied" : "Copy"}
             className={cn(
               "min-w-[74px] gap-1.5 text-muted-foreground hover:text-foreground",
               copied && "text-primary hover:text-primary",
             )}
-            aria-label={copied ? "Reply copied" : "Copy reply"}
+            aria-label={copied ? "Copied" : "Copy"}
           >
             {copied ? (
               <Check className="h-3.5 w-3.5 animate-in zoom-in-50 duration-200" />
@@ -99,10 +108,26 @@ export function ReplyCard({ reply, index, busy, disabled, onRegenerate }: ReplyC
             type="button"
             variant="ghost"
             size="icon"
+            onClick={() => onShorten(reply)}
+            disabled={disabled || busy}
+            aria-label="Make shorter"
+            title="Make shorter"
+            className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground"
+          >
+            {busy ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+            ) : (
+              <Minimize2 className="h-3.5 w-3.5" />
+            )}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
             onClick={() => onRegenerate(reply)}
             disabled={disabled || busy}
-            aria-label={busy ? "Regenerating reply" : "Regenerate this reply"}
-            title="Regenerate this reply"
+            aria-label="New version"
+            title="New version"
             className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground"
           >
             {busy ? (
@@ -114,7 +139,7 @@ export function ReplyCard({ reply, index, busy, disabled, onRegenerate }: ReplyC
         </div>
       </div>
 
-      <p className="mt-2.5 text-[16px] leading-relaxed tracking-[-0.005em] text-foreground/90 sm:text-[16.5px]">
+      <p className="mt-2.5 whitespace-pre-line text-[16px] leading-relaxed tracking-[-0.005em] text-foreground/90 sm:text-[16.5px]">
         {reply.text}
       </p>
     </article>

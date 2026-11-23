@@ -27,6 +27,9 @@ export async function requestReplies(input: GenerateRequest): Promise<GenerateRe
   if (input.single) {
     form.append("single", "true");
   }
+  if (input.shorter) {
+    form.append("shorter", "true");
+  }
 
   let response: Response;
   try {

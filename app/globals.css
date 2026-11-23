@@ -73,6 +73,7 @@
 
   html {
     scroll-behavior: smooth;
+    scrollbar-gutter: stable;
     -webkit-text-size-adjust: 100%;
   }
 
@@ -112,9 +113,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  /* Keep loading spinners animating: they signal progress, not decoration. */
   .animate-fade-up,
   .animate-pulse,
-  .animate-spin,
   .animate-in {
     animation: none !important;
   }

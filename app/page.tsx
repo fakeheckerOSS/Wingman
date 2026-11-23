@@ -160,7 +160,7 @@ export default function Home() {
 
     try {
       const result = await requestReplies({
-        images: isLines ? [] : images.map((image) => image.file),
+        images: images.map((image) => image.file),
         context,
         tones,
         goal,
@@ -196,7 +196,7 @@ export default function Home() {
 
     try {
       const result = await requestReplies({
-        images: isLines ? [] : images.map((image) => image.file),
+        images: images.map((image) => image.file),
         context,
         tones: [isTone(reply.tone) ? reply.tone : tones[0]],
         goal,
@@ -220,6 +220,39 @@ export default function Home() {
     }
   }
 
+  async function handleShorten(reply: Reply) {
+    if (busyId || generatingMore || phase === "loading") return;
+
+    setBusyId(reply.id);
+    setError(null);
+
+    try {
+      const result = await requestReplies({
+        images: images.map((image) => image.file),
+        context,
+        tones: [isTone(reply.tone) ? reply.tone : tones[0]],
+        goal,
+        mode,
+        exclude: replies.map((item) => item.text),
+        single: true,
+        shorter: true,
+      });
+
+      const fresh = result.replies[0];
+      if (!fresh) throw new Error("No shorter version came back. Try again.");
+
+      setReplies((previous) =>
+        previous.map((item) =>
+          item.id === reply.id ? { ...item, text: fresh.text } : item,
+        ),
+      );
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Couldn't shorten that reply.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   async function handleGenerateMore() {
     if (generatingMore || busyId || phase === "loading") return;
 
@@ -228,7 +261,7 @@ export default function Home() {
 
     try {
       const result = await requestReplies({
-        images: isLines ? [] : images.map((image) => image.file),
+        images: images.map((image) => image.file),
         context,
         tones,
         goal,
@@ -255,13 +288,6 @@ export default function Home() {
 
   const busy = phase === "loading" || busyId !== null || generatingMore;
   const canGenerate = !busy && (isLines || images.length > 0);
-  const generateHint = isLines
-    ? context.trim().length === 0
-      ? "Add a detail or two about them for lines that actually land."
-      : null
-    : images.length === 0
-      ? "Add a screenshot to get started."
-      : null;
 
   function renderGenerateButton(className?: string) {
     return (
@@ -306,11 +332,11 @@ export default function Home() {
         <ThemeToggle />
       </header>
 
-      <main className="mx-auto w-full max-w-7xl px-5 pb-28 pt-6 sm:px-8 sm:pt-8 lg:pb-12">
+      <main className="mx-auto w-full max-w-7xl px-5 pb-28 pt-6 sm:px-8 sm:pt-8 lg:pb-16">
         <div className="grid gap-6 lg:grid-cols-[minmax(0,430px)_minmax(0,1fr)] lg:items-start lg:gap-8">
           <section
             aria-labelledby="input-heading"
-            className="flex flex-col rounded-3xl border border-border/80 bg-card/80 p-5 shadow-warm backdrop-blur-sm sm:p-6 lg:min-h-[680px]"
+            className="flex flex-col rounded-3xl border border-border/80 bg-card/80 p-5 shadow-warm backdrop-blur-sm sm:p-6"
           >
             <div className="mb-3">
               <h2 id="input-heading" className="text-[15px] font-semibold tracking-tight">
@@ -325,24 +351,27 @@ export default function Home() {
               <ModeSwitch mode={mode} onChange={changeMode} disabled={phase === "loading"} />
             </div>
 
-            <div className="space-y-3.5">
-              {!isLines && (
-                <div>
-                  <div className="mb-2 flex items-center justify-between">
-                    <span className="text-[13px] font-medium text-foreground">Screenshot</span>
-                    <span className="text-[11px] text-muted-foreground">
-                      {images.length}/{MAX_IMAGES}
-                    </span>
-                  </div>
-                  <UploadZone
-                    images={images}
-                    onFiles={addFiles}
-                    onRemove={removeImage}
-                    error={uploadError}
-                    disabled={phase === "loading"}
-                  />
+            <div className="space-y-3.5 pb-4">
+              <div>
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-[13px] font-medium text-foreground">
+                    {isLines ? "Profile screenshot" : "Screenshot"}
+                    {isLines && (
+                      <span className="ml-1 font-normal text-muted-foreground">(optional)</span>
+                    )}
+                  </span>
+                  <span className="text-[11px] text-muted-foreground">
+                    {images.length}/{MAX_IMAGES}
+                  </span>
                 </div>
-              )}
+                <UploadZone
+                  images={images}
+                  onFiles={addFiles}
+                  onRemove={removeImage}
+                  error={uploadError}
+                  disabled={phase === "loading"}
+                />
+              </div>
 
               <div>
                 <div className="mb-2 flex items-baseline justify-between">
@@ -350,14 +379,7 @@ export default function Home() {
                     htmlFor="context"
                     className="text-[13px] font-medium text-foreground"
                   >
-                    {isLines ? (
-                      "Who are they?"
-                    ) : (
-                      <>
-                        Context{" "}
-                        <span className="font-normal text-muted-foreground">(optional)</span>
-                      </>
-                    )}
+                    {isLines ? "Who are they?" : "Context"}
                   </label>
                   {context.length > 0 && (
                     <span className="text-[10px] tabular-nums text-muted-foreground">
@@ -384,12 +406,7 @@ export default function Home() {
               {!isLines && <GoalSelector selected={goal} onChange={setGoal} />}
             </div>
 
-            <div className="sticky bottom-4 z-10 mt-auto -mx-5 -mb-5 hidden rounded-b-3xl border-t border-border/70 bg-card/95 px-5 py-4 backdrop-blur sm:-mx-6 sm:-mb-6 sm:px-6 lg:block">
-              {generateHint && (
-                <p className="mb-2 text-center text-[10.5px] text-muted-foreground">
-                  {generateHint}
-                </p>
-              )}
+            <div className="sticky bottom-4 z-10 mt-auto -mx-5 -mb-5 hidden rounded-b-3xl border-t border-border/70 bg-card/95 px-5 py-4 shadow-[0_-10px_24px_-16px_rgba(0,0,0,0.35)] backdrop-blur sm:-mx-6 sm:-mb-6 sm:px-6 lg:block">
               {renderGenerateButton("w-full")}
             </div>
           </section>
@@ -407,6 +424,7 @@ export default function Home() {
               busyId={busyId}
               generatingMore={generatingMore}
               onRegenerate={handleRegenerate}
+              onShorten={handleShorten}
               onGenerateMore={handleGenerateMore}
               onRetry={handleGenerate}
             />
@@ -426,9 +444,6 @@ export default function Home() {
       </main>
 
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border/70 bg-background/90 px-4 pt-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))] backdrop-blur-md lg:hidden">
-        {generateHint && (
-          <p className="mb-2 text-center text-[10.5px] text-muted-foreground">{generateHint}</p>
-        )}
         {renderGenerateButton("w-full")}
       </div>
     </div>

@@ -138,7 +138,8 @@ export function UploadZone({ images, onFiles, onRemove, error, disabled }: Uploa
             {images.map((image, index) => (
               <div
                 key={image.id}
-                className="group relative h-16 w-14 shrink-0 overflow-hidden rounded-xl border border-border bg-muted shadow-sm"
+                title={`Screenshot ${index + 1}`}
+                className="group relative h-[72px] w-16 shrink-0 overflow-hidden rounded-xl border border-border bg-muted shadow-sm"
               >
                 {/* Blob URLs are revoked when the image is removed. */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -168,7 +169,7 @@ export function UploadZone({ images, onFiles, onRemove, error, disabled }: Uploa
                 onClick={openPicker}
                 disabled={disabled}
                 aria-label="Add another screenshot"
-                className="grid h-16 w-14 shrink-0 place-items-center rounded-xl border border-dashed border-border bg-card/50 text-muted-foreground transition-colors hover:border-primary/40 hover:bg-accent/50 hover:text-primary"
+                className="grid h-[72px] w-16 shrink-0 place-items-center rounded-xl border border-dashed border-border bg-card/50 text-muted-foreground transition-colors hover:border-primary/40 hover:bg-accent/50 hover:text-primary"
               >
                 <Plus className="h-4 w-4" />
               </button>

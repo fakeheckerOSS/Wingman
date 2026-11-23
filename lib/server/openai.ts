@@ -37,6 +37,37 @@ export interface ParsedReply {
   text: string;
 }
 
+/**
+ * Classic, widely-supported emoji. Anything outside this set is dropped from
+ * model output so newer glyphs never render as tofu boxes on older devices.
+ */
+const ALLOWED_EMOJI = new Set<number>([
+  0x1f600, 0x1f603, 0x1f604, 0x1f601, 0x1f606, 0x1f605, 0x1f923, 0x1f602, 0x1f642,
+  0x1f643, 0x1f609, 0x1f60a, 0x1f607, 0x1f970, 0x1f60d, 0x1f929, 0x1f618, 0x1f617,
+  0x1f61a, 0x1f619, 0x1f61b, 0x1f61c, 0x1f92a, 0x1f61d, 0x1f61e, 0x1f620, 0x1f621,
+  0x1f92f, 0x1f633, 0x1f635, 0x1f60f, 0x1f60c, 0x1f614, 0x1f62c, 0x1f644, 0x1f641,
+  0x1f643, 0x1f611, 0x1f60e, 0x1f60b, 0x1f61f, 0x1f636, 0x1f60a, 0x1f970, 0x1f973,
+  0x1f60e, 0x1f644, 0x1f648, 0x1f649, 0x1f64a, 0x1f440, 0x1f441, 0x1f440, 0x1f64c,
+  0x1f64f, 0x1f44d, 0x1f44e, 0x1f44a, 0x1f44c, 0x1f44f, 0x1f4aa, 0x1f918, 0x1f91d,
+  0x1f44b, 0x1f91c, 0x1f90c, 0x1f4af, 0x1f525, 0x1f4a5, 0x1f4ab, 0x2728, 0x2b50,
+  0x1f31f, 0x1f320, 0x1f308, 0x2600, 0x26a1, 0x2764, 0x1f9e1, 0x1f49b, 0x1f49a,
+  0x1f499, 0x1f49c, 0x1f5a4, 0x1f90d, 0x1f48b, 0x1f389, 0x1f38a, 0x1f382, 0x1f37b,
+]);
+
+const EMOJI_LIKE = /\p{Extended_Pictographic}/u;
+
+/** Remove Extended_Pictographic characters outside the safe allowlist. */
+function stripUnsupportedEmoji(text: string): string {
+  let result = "";
+  for (const char of text) {
+    if (EMOJI_LIKE.test(char) && !ALLOWED_EMOJI.has(char.codePointAt(0) ?? -1)) {
+      continue;
+    }
+    result += char;
+  }
+  return result;
+}
+
 export interface ParsedModelOutput {
   error?: string;
   read: string;
@@ -94,8 +125,10 @@ export async function callChatCompletion({
       body: JSON.stringify({
         model,
         messages,
-        temperature: 0.9,
-        max_tokens: 4000,
+        temperature: 1.0,
+        top_p: 0.95,
+        max_tokens: 32768,
+        response_format: { type: "json_object" },
         stream: false,
       }),
       signal: AbortSignal.timeout(75_000),
@@ -131,10 +164,15 @@ export async function callChatCompletion({
   }
 
   const payload = (await response.json().catch(() => null)) as {
-    choices?: Array<{ message?: { content?: unknown } }>;
+    choices?: Array<{ message?: { content?: unknown }; finish_reason?: string }>;
   } | null;
 
-  const content = payload?.choices?.[0]?.message?.content;
+  const firstChoice = payload?.choices?.[0];
+  if (firstChoice?.finish_reason === "length") {
+    console.warn("[wingman] model hit the max_tokens limit; output may be truncated");
+  }
+
+  const content = firstChoice?.message?.content;
 
   if (typeof content === "string" && content.trim()) return content;
 
@@ -192,7 +230,10 @@ export function parseModelOutput(raw: string): ParsedModelOutput {
     if (!item || typeof item !== "object") continue;
     const reply = item as Record<string, unknown>;
     if (typeof reply.text !== "string") continue;
-    const text = reply.text.trim().replace(/^["']([\s\S]+)["']$/, "$1").slice(0, 800);
+    const cleaned = stripUnsupportedEmoji(
+      reply.text.trim().replace(/^["']([\s\S]+)["']$/, "$1"),
+    );
+    const text = cleaned.slice(0, 800);
     if (!text) continue;
     const key = text.toLowerCase();
     if (seen.has(key)) continue;
@@ -208,7 +249,7 @@ export function parseModelOutput(raw: string): ParsedModelOutput {
 
   const read =
     typeof record.read === "string" && record.read.trim()
-      ? record.read.trim().slice(0, 500)
+      ? stripUnsupportedEmoji(record.read.trim()).slice(0, 500)
       : "There is room to keep the conversation moving — keep it light and specific.";
 
   return { read, replies };

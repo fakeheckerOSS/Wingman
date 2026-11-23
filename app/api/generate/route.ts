@@ -218,8 +218,9 @@ export async function POST(request: Request) {
   }
 
   const single = formString(form, "single") === "true";
+  const shorter = formString(form, "shorter") === "true";
   const exclude = parseExcludedReplies(formString(form, "exclude"));
-  const replyCount = single ? 1 : isLines ? PICKUP_LINE_COUNT : REPLY_DRAFT_COUNT;
+  const replyCount = single || shorter ? 1 : isLines ? PICKUP_LINE_COUNT : REPLY_DRAFT_COUNT;
 
   const imageData: { dataUrl: string }[] = [];
 
@@ -242,13 +243,14 @@ export async function POST(request: Request) {
   }
 
   const userPrompt = isLines
-    ? buildPickupLinesPrompt({ context, tones, exclude, single, replyCount })
+    ? buildPickupLinesPrompt({ context, tones, exclude, single, shorter, replyCount })
     : buildUserPrompt({
         context,
         tones,
         goal: goalValue,
         exclude,
         single,
+        shorter,
         replyCount,
       });
 
