@@ -1,4 +1,4 @@
-import type { Goal, Tone } from "@/lib/constants";
+import type { Goal, Mode, Tone } from "@/lib/constants";
 
 export interface Reply {
   id: string;
@@ -16,6 +16,7 @@ export interface GenerateRequest {
   context: string;
   tones: Tone[];
   goal: Goal;
+  mode: Mode;
   /** Replies already on screen, so the model produces something new. */
   exclude?: string[];
   /** Regenerate a single card in one tone. */

@@ -3,6 +3,14 @@
  * route, so keep this file free of server-only dependencies.
  */
 
+export const MODES = ["replies", "lines"] as const;
+
+export type Mode = (typeof MODES)[number];
+
+export function isMode(value: unknown): value is Mode {
+  return value === "replies" || value === "lines";
+}
+
 export const TONES = [
   "Playful",
   "Smooth",
@@ -29,6 +37,10 @@ export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 export const ACCEPTED_IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp"] as const;
 export const MAX_CONTEXT_CHARS = 800;
 export const MAX_REPLIES = 5;
+
+/** How many drafts each mode aims to return (kept in sync with the UI skeleton). */
+export const REPLY_DRAFT_COUNT = 3;
+export const PICKUP_LINE_COUNT = 4;
 
 /** Accent dot colors used on tone badges; earthy, not neon. */
 export const TONE_COLORS: Record<Tone, string> = {

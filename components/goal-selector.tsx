@@ -1,25 +1,7 @@
 "use client";
 
-import {
-  CalendarHeart,
-  Hand,
-  HeartHandshake,
-  History,
-  MessagesSquare,
-  Phone,
-  type LucideIcon,
-} from "lucide-react";
-
 import { GOALS, type Goal } from "@/lib/constants";
 import { cn } from "@/lib/utils";
-
-const GOAL_ICONS: Record<Goal, LucideIcon> = {
-  "Keep chatting": MessagesSquare,
-  "Ask for number": Phone,
-  "Ask on a date": CalendarHeart,
-  "Revive a dead convo": History,
-  "Politely decline": Hand,
-};
 
 interface GoalSelectorProps {
   selected: Goal;
@@ -33,28 +15,39 @@ export function GoalSelector({ selected, onChange }: GoalSelectorProps) {
         <span className="text-[13px] font-medium text-foreground">Goal</span>
         <span className="text-[11px] text-muted-foreground">what&apos;s the move?</span>
       </legend>
-      <div className="flex flex-wrap gap-2">
-        {GOALS.map((goal) => {
+      <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Goal">
+        {GOALS.map((goal, index) => {
           const active = goal === selected;
-          const Icon = GOAL_ICONS[goal] ?? HeartHandshake;
+          const spansFull = GOALS.length % 2 === 1 && index === GOALS.length - 1;
           return (
             <button
               key={goal}
               type="button"
-              aria-pressed={active}
+              role="radio"
+              aria-checked={active}
               onClick={() => onChange(goal)}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all duration-200",
+                "inline-flex items-center justify-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                spansFull && "col-span-2",
                 active
-                  ? "border-primary/40 bg-primary/10 text-foreground shadow-sm shadow-primary/5"
-                  : "border-border bg-card/60 text-muted-foreground hover:border-primary/25 hover:bg-accent/60 hover:text-foreground",
+                  ? "border-primary bg-primary/15 text-foreground shadow-sm shadow-primary/10"
+                  : "border-border bg-card/60 text-muted-foreground hover:border-primary/30 hover:bg-accent/60 hover:text-foreground",
               )}
             >
-              <Icon
-                className={cn("h-3.5 w-3.5", active ? "text-primary" : "text-muted-foreground/70")}
-                strokeWidth={1.9}
-              />
-              {goal}
+              <span
+                className={cn(
+                  "grid h-4 w-4 shrink-0 place-items-center rounded-full border-2 transition-colors",
+                  active ? "border-primary" : "border-border",
+                )}
+              >
+                <span
+                  className={cn(
+                    "h-1.5 w-1.5 rounded-full transition-colors",
+                    active ? "bg-primary" : "bg-transparent",
+                  )}
+                />
+              </span>
+              <span className="truncate">{goal}</span>
             </button>
           );
         })}

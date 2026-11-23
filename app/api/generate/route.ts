@@ -6,9 +6,18 @@ import {
   MAX_CONTEXT_CHARS,
   MAX_IMAGES,
   MAX_IMAGE_BYTES,
+  PICKUP_LINE_COUNT,
+  REPLY_DRAFT_COUNT,
+  type Goal,
+  type Mode,
   type Tone,
 } from "@/lib/constants";
-import { buildUserPrompt, SYSTEM_PROMPT } from "@/lib/prompt";
+import {
+  buildPickupLinesPrompt,
+  buildUserPrompt,
+  PICKUP_LINES_SYSTEM_PROMPT,
+  SYSTEM_PROMPT,
+} from "@/lib/prompt";
 import {
   buildVisionMessages,
   callChatCompletion,
@@ -175,7 +184,10 @@ export async function POST(request: Request) {
 
   const images = form.getAll("images").filter((item): item is File => typeof item !== "string");
 
-  if (images.length === 0) {
+  const mode: Mode = formString(form, "mode") === "lines" ? "lines" : "replies";
+  const isLines = mode === "lines";
+
+  if (!isLines && images.length === 0) {
     return jsonError("Add at least one chat screenshot.", 400, rateHeaders);
   }
   if (images.length > MAX_IMAGES) {
@@ -196,14 +208,18 @@ export async function POST(request: Request) {
     return jsonError("Pick at least one tone.", 400, rateHeaders);
   }
 
-  const goalValue = formString(form, "goal");
-  if (!isGoal(goalValue)) {
-    return jsonError("Pick a valid goal.", 400, rateHeaders);
+  let goalValue: Goal = "Keep chatting";
+  if (!isLines) {
+    const rawGoal = formString(form, "goal");
+    if (!isGoal(rawGoal)) {
+      return jsonError("Pick a valid goal.", 400, rateHeaders);
+    }
+    goalValue = rawGoal;
   }
 
   const single = formString(form, "single") === "true";
   const exclude = parseExcludedReplies(formString(form, "exclude"));
-  const replyCount = single ? 1 : 4;
+  const replyCount = single ? 1 : isLines ? PICKUP_LINE_COUNT : REPLY_DRAFT_COUNT;
 
   const imageData: { dataUrl: string }[] = [];
 
@@ -225,16 +241,19 @@ export async function POST(request: Request) {
     imageData.push({ dataUrl: `data:${mime};base64,${bytes.toString("base64")}` });
   }
 
-  const userPrompt = buildUserPrompt({
-    context,
-    tones,
-    goal: goalValue,
-    exclude,
-    single,
-    replyCount,
-  });
+  const userPrompt = isLines
+    ? buildPickupLinesPrompt({ context, tones, exclude, single, replyCount })
+    : buildUserPrompt({
+        context,
+        tones,
+        goal: goalValue,
+        exclude,
+        single,
+        replyCount,
+      });
 
-  const messages = buildVisionMessages(SYSTEM_PROMPT, userPrompt, imageData);
+  const systemPrompt = isLines ? PICKUP_LINES_SYSTEM_PROMPT : SYSTEM_PROMPT;
+  const messages = buildVisionMessages(systemPrompt, userPrompt, imageData);
 
   let output: ParsedModelOutput;
   try {
@@ -265,7 +284,13 @@ export async function POST(request: Request) {
   });
 
   if (replies.length === 0) {
-    return jsonError("Wingman couldn't find a reply in that screenshot. Try another one.", 422, rateHeaders);
+    return jsonError(
+      isLines
+        ? "Wingman couldn't come up with pickup lines this time. Try again."
+        : "Wingman couldn't find a reply in that screenshot. Try another one.",
+      422,
+      rateHeaders,
+    );
   }
 
   console.info(`[wingman] generated ${replies.length} reply/replies from ${images.length} image(s)`);

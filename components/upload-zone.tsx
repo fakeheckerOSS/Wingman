@@ -94,7 +94,7 @@ export function UploadZone({ images, onFiles, onRemove, error, disabled }: Uploa
           disabled={disabled}
           {...dragHandlers}
           className={cn(
-            "group flex w-full flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-background/40 px-4 py-9 text-center transition-colors duration-200",
+            "group flex w-full flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-background/40 px-4 py-6 text-center transition-colors duration-200",
             "hover:border-primary/45 hover:bg-accent/40",
             dragging && "border-primary bg-accent/60",
             disabled && "pointer-events-none opacity-60",
@@ -102,7 +102,7 @@ export function UploadZone({ images, onFiles, onRemove, error, disabled }: Uploa
         >
           <span
             className={cn(
-              "mb-3 grid h-11 w-11 place-items-center rounded-full bg-primary/10 text-primary transition-transform duration-300 group-hover:-translate-y-0.5",
+              "mb-2.5 grid h-10 w-10 place-items-center rounded-full bg-primary/10 text-primary transition-transform duration-300 group-hover:-translate-y-0.5",
               dragging && "-translate-y-1 scale-105",
             )}
           >
@@ -121,15 +121,16 @@ export function UploadZone({ images, onFiles, onRemove, error, disabled }: Uploa
               V
             </kbd>
           </span>
-          <span className="mt-3 text-[10.5px] uppercase tracking-[0.12em] text-muted-foreground/70">
-            PNG · JPG · WEBP · 5 MB each · up to {MAX_IMAGES}
+          <span className="mt-2 inline-flex items-center gap-1 text-[10.5px] text-muted-foreground">
+            <Lock className="h-2.5 w-2.5" />
+            Never stored · PNG, JPG, WEBP · 5 MB · up to {MAX_IMAGES}
           </span>
         </button>
       ) : (
         <div
           {...dragHandlers}
           className={cn(
-            "rounded-2xl border border-dashed border-border bg-background/40 p-2.5 transition-colors",
+            "rounded-2xl border border-dashed border-border bg-background/40 p-2 transition-colors",
             dragging && "border-primary bg-accent/60",
           )}
         >
@@ -137,7 +138,7 @@ export function UploadZone({ images, onFiles, onRemove, error, disabled }: Uploa
             {images.map((image, index) => (
               <div
                 key={image.id}
-                className="group relative h-[88px] w-[70px] shrink-0 overflow-hidden rounded-xl border border-border bg-muted shadow-sm"
+                className="group relative h-16 w-14 shrink-0 overflow-hidden rounded-xl border border-border bg-muted shadow-sm"
               >
                 {/* Blob URLs are revoked when the image is removed. */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -154,9 +155,9 @@ export function UploadZone({ images, onFiles, onRemove, error, disabled }: Uploa
                   onClick={() => onRemove(image.id)}
                   disabled={disabled}
                   aria-label={`Remove screenshot ${index + 1}`}
-                  className="absolute -right-0 -top-0 grid h-5 w-5 place-items-center rounded-bl-lg bg-foreground/75 text-background opacity-90 transition-colors hover:bg-destructive focus-visible:opacity-100"
+                  className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-lg bg-foreground/85 text-background shadow-sm backdrop-blur-sm transition-colors hover:bg-destructive focus-visible:opacity-100"
                 >
-                  <X className="h-3 w-3" strokeWidth={2.5} />
+                  <X className="h-3.5 w-3.5" strokeWidth={2.5} />
                 </button>
               </div>
             ))}
@@ -167,7 +168,7 @@ export function UploadZone({ images, onFiles, onRemove, error, disabled }: Uploa
                 onClick={openPicker}
                 disabled={disabled}
                 aria-label="Add another screenshot"
-                className="grid h-[88px] w-[70px] shrink-0 place-items-center rounded-xl border border-dashed border-border bg-card/50 text-muted-foreground transition-colors hover:border-primary/40 hover:bg-accent/50 hover:text-primary"
+                className="grid h-16 w-14 shrink-0 place-items-center rounded-xl border border-dashed border-border bg-card/50 text-muted-foreground transition-colors hover:border-primary/40 hover:bg-accent/50 hover:text-primary"
               >
                 <Plus className="h-4 w-4" />
               </button>
@@ -178,7 +179,7 @@ export function UploadZone({ images, onFiles, onRemove, error, disabled }: Uploa
             <span className="text-[10.5px] text-muted-foreground">
               {images.length} of {MAX_IMAGES} · drag more in or paste
             </span>
-            <span className="inline-flex items-center gap-1 text-[10.5px] text-muted-foreground/80">
+            <span className="inline-flex items-center gap-1 text-[10.5px] text-muted-foreground">
               <Lock className="h-2.5 w-2.5" />
               Not stored
             </span>

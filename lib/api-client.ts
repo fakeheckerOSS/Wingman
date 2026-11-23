@@ -19,6 +19,7 @@ export async function requestReplies(input: GenerateRequest): Promise<GenerateRe
   form.append("context", input.context);
   form.append("tones", JSON.stringify(input.tones));
   form.append("goal", input.goal);
+  form.append("mode", input.mode);
 
   if (input.exclude?.length) {
     form.append("exclude", JSON.stringify(input.exclude));

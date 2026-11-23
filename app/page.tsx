@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2, Lock, Sparkles } from "lucide-react";
 
 import { GoalSelector } from "@/components/goal-selector";
+import { ModeSwitch } from "@/components/mode-switch";
 import { ReplyPanel, type Phase } from "@/components/reply-panel";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { ToneSelector } from "@/components/tone-selector";
@@ -19,11 +20,13 @@ import {
   MAX_IMAGES,
   MAX_IMAGE_BYTES,
   type Goal,
+  type Mode,
   type Tone,
 } from "@/lib/constants";
 import type { Reply, UploadedImage } from "@/lib/types";
 
 export default function Home() {
+  const [mode, setMode] = useState<Mode>("replies");
   const [images, setImages] = useState<UploadedImage[]>([]);
   const imagesRef = useRef<UploadedImage[]>([]);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -40,6 +43,8 @@ export default function Home() {
   const [generatingMore, setGeneratingMore] = useState(false);
 
   const outputRef = useRef<HTMLElement>(null);
+
+  const isLines = mode === "lines";
 
   // Keep the ref in sync for callbacks that must not re-subscribe (paste, unmount).
   useEffect(() => {
@@ -131,8 +136,19 @@ export default function Home() {
     });
   }
 
+  function changeMode(next: Mode) {
+    if (next === mode) return;
+
+    setMode(next);
+    setPhase("idle");
+    setRead("");
+    setReplies([]);
+    setError(null);
+    setUploadError(null);
+  }
+
   async function handleGenerate() {
-    if (images.length === 0) {
+    if (!isLines && images.length === 0) {
       setUploadError("Add a screenshot first.");
       return;
     }
@@ -144,10 +160,11 @@ export default function Home() {
 
     try {
       const result = await requestReplies({
-        images: images.map((image) => image.file),
+        images: isLines ? [] : images.map((image) => image.file),
         context,
         tones,
         goal,
+        mode,
       });
 
       setRead(result.read);
@@ -179,10 +196,11 @@ export default function Home() {
 
     try {
       const result = await requestReplies({
-        images: images.map((image) => image.file),
+        images: isLines ? [] : images.map((image) => image.file),
         context,
         tones: [isTone(reply.tone) ? reply.tone : tones[0]],
         goal,
+        mode,
         exclude: replies.map((item) => item.text),
         single: true,
       });
@@ -210,10 +228,11 @@ export default function Home() {
 
     try {
       const result = await requestReplies({
-        images: images.map((image) => image.file),
+        images: isLines ? [] : images.map((image) => image.file),
         context,
         tones,
         goal,
+        mode,
         exclude: replies.map((item) => item.text),
       });
 
@@ -235,10 +254,42 @@ export default function Home() {
   }
 
   const busy = phase === "loading" || busyId !== null || generatingMore;
+  const canGenerate = !busy && (isLines || images.length > 0);
+  const generateHint = isLines
+    ? context.trim().length === 0
+      ? "Add a detail or two about them for lines that actually land."
+      : null
+    : images.length === 0
+      ? "Add a screenshot to get started."
+      : null;
+
+  function renderGenerateButton(className?: string) {
+    return (
+      <Button
+        type="button"
+        size="lg"
+        onClick={handleGenerate}
+        disabled={!canGenerate}
+        className={className}
+      >
+        {phase === "loading" ? (
+          <>
+            <Loader2 className="animate-spin" />
+            {isLines ? "Cooking up lines…" : "Reading the room…"}
+          </>
+        ) : (
+          <>
+            <Sparkles />
+            {isLines ? "Generate pickup lines" : "Generate replies"}
+          </>
+        )}
+      </Button>
+    );
+  }
 
   return (
-    <div className="relative min-h-dvh overflow-x-hidden">
-      <header className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-5 pb-2 pt-5 sm:px-8 sm:pt-8">
+    <div className="relative min-h-dvh overflow-x-clip">
+      <header className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-5 pb-2 pt-5 sm:px-8 sm:pt-8">
         <div className="flex items-center gap-3">
           <div className="grid h-10 w-10 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-warm">
             <WingMark className="h-5 w-5" />
@@ -255,41 +306,43 @@ export default function Home() {
         <ThemeToggle />
       </header>
 
-      <main className="mx-auto w-full max-w-6xl px-5 pb-10 pt-6 sm:px-8 sm:pt-8">
+      <main className="mx-auto w-full max-w-7xl px-5 pb-28 pt-6 sm:px-8 sm:pt-8 lg:pb-12">
         <div className="grid gap-6 lg:grid-cols-[minmax(0,430px)_minmax(0,1fr)] lg:items-start lg:gap-8">
           <section
             aria-labelledby="input-heading"
-            className="rounded-3xl border border-border/80 bg-card/80 p-5 shadow-warm backdrop-blur-sm sm:p-6"
+            className="flex flex-col rounded-3xl border border-border/80 bg-card/80 p-5 shadow-warm backdrop-blur-sm sm:p-6 lg:min-h-[680px]"
           >
-            <div className="mb-5">
+            <div className="mb-3">
               <h2 id="input-heading" className="text-[15px] font-semibold tracking-tight">
-                The conversation
+                {isLines ? "The opener" : "The conversation"}
               </h2>
               <p className="mt-0.5 text-[11.5px] text-muted-foreground">
-                Drop in a chat, tell me the vibe.
+                {isLines ? "Tell me about them, I'll bring the lines." : "Drop in a chat, tell me the vibe."}
               </p>
             </div>
 
-            <div className="space-y-5">
-              <div>
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="text-[13px] font-medium text-foreground">Screenshot</span>
-                  <span className="text-[11px] text-muted-foreground">
-                    {images.length}/{MAX_IMAGES}
-                  </span>
+            <div className="mb-3">
+              <ModeSwitch mode={mode} onChange={changeMode} disabled={phase === "loading"} />
+            </div>
+
+            <div className="space-y-3.5">
+              {!isLines && (
+                <div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-[13px] font-medium text-foreground">Screenshot</span>
+                    <span className="text-[11px] text-muted-foreground">
+                      {images.length}/{MAX_IMAGES}
+                    </span>
+                  </div>
+                  <UploadZone
+                    images={images}
+                    onFiles={addFiles}
+                    onRemove={removeImage}
+                    error={uploadError}
+                    disabled={phase === "loading"}
+                  />
                 </div>
-                <UploadZone
-                  images={images}
-                  onFiles={addFiles}
-                  onRemove={removeImage}
-                  error={uploadError}
-                  disabled={phase === "loading"}
-                />
-                <p className="mt-2 flex items-center gap-1.5 px-0.5 text-[10.5px] text-muted-foreground">
-                  <Lock className="h-2.5 w-2.5" />
-                  Screenshots are processed and never stored.
-                </p>
-              </div>
+              )}
 
               <div>
                 <div className="mb-2 flex items-baseline justify-between">
@@ -297,11 +350,17 @@ export default function Home() {
                     htmlFor="context"
                     className="text-[13px] font-medium text-foreground"
                   >
-                    Context{" "}
-                    <span className="font-normal text-muted-foreground">(optional)</span>
+                    {isLines ? (
+                      "Who are they?"
+                    ) : (
+                      <>
+                        Context{" "}
+                        <span className="font-normal text-muted-foreground">(optional)</span>
+                      </>
+                    )}
                   </label>
                   {context.length > 0 && (
-                    <span className="text-[10px] tabular-nums text-muted-foreground/70">
+                    <span className="text-[10px] tabular-nums text-muted-foreground">
                       {context.length}/{MAX_CONTEXT_CHARS}
                     </span>
                   )}
@@ -311,45 +370,37 @@ export default function Home() {
                   value={context}
                   onChange={(event) => setContext(event.target.value)}
                   maxLength={MAX_CONTEXT_CHARS}
-                  placeholder={'e.g. "We matched yesterday. She likes hiking and bad puns."'}
+                  rows={2}
+                  className="min-h-[64px]"
+                  placeholder={
+                    isLines
+                      ? 'e.g. "They love hiking, iced coffee, and terrible puns. We matched on Hinge."'
+                      : 'e.g. "We matched yesterday. They like hiking and bad puns."'
+                  }
                 />
               </div>
 
               <ToneSelector selected={tones} onToggle={toggleTone} />
-              <GoalSelector selected={goal} onChange={setGoal} />
+              {!isLines && <GoalSelector selected={goal} onChange={setGoal} />}
+            </div>
 
-              <div className="pt-1">
-                <Button
-                  type="button"
-                  size="lg"
-                  onClick={handleGenerate}
-                  disabled={busy || images.length === 0}
-                  className="w-full"
-                >
-                  {phase === "loading" ? (
-                    <>
-                      <Loader2 className="animate-spin" />
-                      Reading the room…
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles />
-                      Generate replies
-                    </>
-                  )}
-                </Button>
-                {images.length === 0 && (
-                  <p className="mt-2 text-center text-[10.5px] text-muted-foreground">
-                    Add a screenshot to get started.
-                  </p>
-                )}
-              </div>
+            <div className="sticky bottom-4 z-10 mt-auto -mx-5 -mb-5 hidden rounded-b-3xl border-t border-border/70 bg-card/95 px-5 py-4 backdrop-blur sm:-mx-6 sm:-mb-6 sm:px-6 lg:block">
+              {generateHint && (
+                <p className="mb-2 text-center text-[10.5px] text-muted-foreground">
+                  {generateHint}
+                </p>
+              )}
+              {renderGenerateButton("w-full")}
             </div>
           </section>
 
-          <section ref={outputRef} className="min-w-0 scroll-mt-6">
+          <section
+            ref={outputRef}
+            className="min-w-0 scroll-mt-6 lg:sticky lg:top-6 lg:max-h-[calc(100dvh-3rem)] lg:overflow-y-auto lg:pr-1"
+          >
             <ReplyPanel
               phase={phase}
+              mode={mode}
               read={read}
               replies={replies}
               error={error}
@@ -367,12 +418,19 @@ export default function Home() {
             Made for better conversations. AI drafts can miss the mark — you know the
             context best.
           </p>
-          <p className="mt-1.5 inline-flex items-center gap-1.5 text-[10px] text-muted-foreground/70">
+          <p className="mt-1.5 inline-flex items-center gap-1.5 text-[10px] text-muted-foreground">
             <Lock className="h-2.5 w-2.5" />
             No accounts, no saved chats. Screenshots are processed in memory only.
           </p>
         </footer>
       </main>
+
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border/70 bg-background/90 px-4 pt-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))] backdrop-blur-md lg:hidden">
+        {generateHint && (
+          <p className="mb-2 text-center text-[10.5px] text-muted-foreground">{generateHint}</p>
+        )}
+        {renderGenerateButton("w-full")}
+      </div>
     </div>
   );
 }
