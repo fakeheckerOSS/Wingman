@@ -1,6 +1,6 @@
 /**
  * Minimal OpenAI-compatible chat-completions client. Only the pieces Wingman
- * needs: a system prompt, one multimodal user message, and strict JSON output.
+ * needs: a system prompt, one multimodal user message, and a single response.
  */
 
 export interface ModelImage {
@@ -19,16 +19,6 @@ export class ModelRequestError extends Error {
     super(message);
     this.name = "ModelRequestError";
     this.status = status;
-  }
-}
-
-export class InvalidModelOutputError extends Error {
-  raw: string;
-
-  constructor(raw: string) {
-    super("The model returned a response that was not valid JSON.");
-    this.name = "InvalidModelOutputError";
-    this.raw = raw;
   }
 }
 
@@ -69,7 +59,6 @@ function stripUnsupportedEmoji(text: string): string {
 }
 
 export interface ParsedModelOutput {
-  error?: string;
   read: string;
   replies: ParsedReply[];
 }
@@ -128,7 +117,6 @@ export async function callChatCompletion({
         temperature: 1.0,
         top_p: 0.95,
         max_tokens: 32768,
-        response_format: { type: "json_object" },
         stream: false,
       }),
       signal: AbortSignal.timeout(75_000),
@@ -192,65 +180,40 @@ export async function callChatCompletion({
   throw new ModelRequestError("The model returned an empty response. Try again.", 502);
 }
 
-/** Strip code fences, then isolate the outermost JSON object. */
-export function parseModelOutput(raw: string): ParsedModelOutput {
-  let text = raw.trim().replace(/^\uFEFF/, "");
+/** Parse plain text output in the format:
+ * READ: <text>
+ * REPLY 1 (Tone): <text>
+ * REPLY 2 (Tone): <text>
+ * REPLY 3 (Tone): <text>
+ */
+export function parseResponse(raw: string): ParsedModelOutput {
+  const text = raw.trim().replace(/^\uFEFF/, "");
 
-  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  if (fenced?.[1]) text = fenced[1].trim();
+  // Find READ line
+  const readMatch = text.match(/^READ:\s*(.+)$/im);
+  const read = readMatch?.[1]?.trim() ?? "There is room to keep the conversation moving — keep it light and specific.";
 
-  const start = text.indexOf("{");
-  const end = text.lastIndexOf("}");
-  if (start === -1 || end <= start) throw new InvalidModelOutputError(raw);
-  const candidate = text.slice(start, end + 1);
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(candidate);
-  } catch {
-    throw new InvalidModelOutputError(raw);
-  }
-
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    throw new InvalidModelOutputError(raw);
-  }
-
-  const record = parsed as Record<string, unknown>;
-
-  if (typeof record.error === "string" && record.error.trim()) {
-    return { error: record.error.trim().slice(0, 300), read: "", replies: [] };
-  }
-
-  if (!Array.isArray(record.replies)) throw new InvalidModelOutputError(raw);
-
+  // Find all REPLY lines
+  const replyRegex = /^REPLY\s+\d+\s*\(([^)]+)\):\s*([\s\S]*?)(?=^REPLY\s+\d+\s*\(|$)/gim;
   const seen = new Set<string>();
   const replies: ParsedReply[] = [];
 
-  for (const item of record.replies) {
-    if (!item || typeof item !== "object") continue;
-    const reply = item as Record<string, unknown>;
-    if (typeof reply.text !== "string") continue;
-    const cleaned = stripUnsupportedEmoji(
-      reply.text.trim().replace(/^["']([\s\S]+)["']$/, "$1"),
-    );
-    const text = cleaned.slice(0, 800);
-    if (!text) continue;
-    const key = text.toLowerCase();
+  let match;
+  while ((match = replyRegex.exec(text)) !== null) {
+    const tone = match[1].trim().slice(0, 30);
+    let replyText = match[2].trim().replace(/^["']([\s\S]+)["']$/, "$1");
+    // Convert literal \n to actual newlines
+    replyText = replyText.replace(/\\n/g, "\n");
+    replyText = stripUnsupportedEmoji(replyText).slice(0, 800);
+    if (!replyText) continue;
+    const key = replyText.toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
-    replies.push({
-      tone: typeof reply.tone === "string" ? reply.tone.trim().slice(0, 30) : "",
-      text,
-    });
+    replies.push({ tone, text: replyText });
     if (replies.length >= 8) break;
   }
 
-  if (replies.length === 0) throw new InvalidModelOutputError(raw);
-
-  const read =
-    typeof record.read === "string" && record.read.trim()
-      ? stripUnsupportedEmoji(record.read.trim()).slice(0, 500)
-      : "There is room to keep the conversation moving — keep it light and specific.";
+  if (replies.length === 0) throw new Error("Invalid output format");
 
   return { read, replies };
 }

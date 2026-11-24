@@ -21,9 +21,8 @@ import {
 import {
   buildVisionMessages,
   callChatCompletion,
-  InvalidModelOutputError,
   ModelRequestError,
-  parseModelOutput,
+  parseResponse,
   type ChatMessage,
   type ParsedModelOutput,
 } from "@/lib/server/openai";
@@ -116,8 +115,7 @@ function parseExcludedReplies(raw: string): string[] {
 }
 
 /**
- * One model call; if the JSON is malformed, repair once by showing the model
- * its own output. This is the "retry once" behavior the UI relies on.
+ * One model call; if the output is malformed, retry once.
  */
 async function requestParsedReplies(
   config: { baseUrl: string; apiKey: string; model: string },
@@ -126,24 +124,22 @@ async function requestParsedReplies(
   const first = await callChatCompletion({ ...config, messages });
 
   try {
-    return parseModelOutput(first);
-  } catch (error) {
-    if (!(error instanceof InvalidModelOutputError)) throw error;
-
-    console.warn(`[wingman] malformed model JSON (${error.raw.length} chars); retrying once`);
+    return parseResponse(first);
+  } catch {
+    console.warn(`[wingman] malformed model output (${first.length} chars); retrying once`);
 
     const repairMessages: ChatMessage[] = [
       ...messages,
-      { role: "assistant", content: error.raw.slice(0, 8000) },
+      { role: "assistant", content: first.slice(0, 8000) },
       {
         role: "user",
         content:
-          "That response was not valid JSON. Reply with the complete corrected object now. Only the JSON object: no markdown, no code fences, no commentary.",
+          "That response was not in the expected format. Reply with the correct format now: READ line followed by REPLY lines. No markdown, no code fences, no commentary.",
       },
     ];
 
     const second = await callChatCompletion({ ...config, messages: repairMessages });
-    return parseModelOutput(second);
+    return parseResponse(second);
   }
 }
 
@@ -264,20 +260,8 @@ export async function POST(request: Request) {
     if (error instanceof ModelRequestError) {
       return jsonError(error.message, error.status, rateHeaders);
     }
-    if (error instanceof InvalidModelOutputError) {
-      console.error("[wingman] model returned invalid JSON after retry");
-      return jsonError(
-        "Wingman couldn't format the reply this time. Please try again.",
-        502,
-        rateHeaders,
-      );
-    }
     console.error("[wingman] unexpected generation error", error);
     return jsonError("Something went wrong while generating replies.", 500, rateHeaders);
-  }
-
-  if (output.error) {
-    return jsonError(output.error, 422, rateHeaders);
   }
 
   const replies = output.replies.slice(0, replyCount).map((reply) => {
