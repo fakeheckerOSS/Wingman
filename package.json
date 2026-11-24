@@ -1,7 +1,6 @@
 {
   "name": "wingman",
   "version": "1.0.0",
-  "private": true,
   "description": "Wingman — turn chat screenshots into thoughtful, human-sounding replies.",
   "scripts": {
     "dev": "next dev",
