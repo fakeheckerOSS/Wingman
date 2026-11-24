@@ -2,7 +2,7 @@
   <img src="public/logo.svg" alt="Wingman logo" width="120" />
 </p>
 
-# Wingman
+<h1 align="center">Wingman</h1>
 
 You know that moment when someone sends you a message and you stare at it for ten minutes because you have no idea what to say back? Wingman is for that.
 
